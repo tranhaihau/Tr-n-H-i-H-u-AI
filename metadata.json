@@ -1,0 +1,5 @@
+{
+  "name": "Tran Hai Hau AI",
+  "description": "An application with multiple AI-powered image editing features, including watermark removal, upscaling, expanding, image generation from prompts, background removal, and background changing.",
+  "requestFramePermissions": []
+}
