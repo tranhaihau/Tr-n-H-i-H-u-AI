@@ -319,7 +319,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
 
         const OriginalImageViewer = () => {
             if (!originalImageUrl) return <div className="text-text-secondary">Tải ảnh lên để bắt đầu</div>;
-            if (activeTool === EditMode.GenerativeFill) return <InteractiveImage src={originalImageUrl} onSelectionChange={setSelection} />;
+            if (activeTool === EditMode.GenerativeFill) return <InteractiveImage src={originalImageUrl} selection={selection} onSelectionChange={setSelection} />;
             if (activeTool === EditMode.Expand) return <OutpaintingCanvas src={originalImageUrl} onExpansionChange={setExpansionData} />;
             return <img src={originalImageUrl} alt="Original" className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />;
         };

@@ -204,7 +204,8 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
       return <div className="text-text-secondary">Tải ảnh lên để bắt đầu</div>;
     }
     if (isGenerativeFillMode) {
-      return <InteractiveImage src={originalImageUrl} onSelectionChange={setSelection} />;
+      // FIX: Added the missing 'selection' prop to the InteractiveImage component.
+      return <InteractiveImage src={originalImageUrl} selection={selection} onSelectionChange={setSelection} />;
     }
     if (isExpandMode) {
       return <OutpaintingCanvas src={originalImageUrl} onExpansionChange={setExpansionData} />;

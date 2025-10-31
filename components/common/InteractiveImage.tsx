@@ -9,14 +9,14 @@ export interface Selection {
 
 interface InteractiveImageProps {
   src: string;
+  selection: Selection | null;
   onSelectionChange: (selection: Selection | null) => void;
 }
 
-const InteractiveImage: React.FC<InteractiveImageProps> = ({ src, onSelectionChange }) => {
+const InteractiveImage: React.FC<InteractiveImageProps> = ({ src, selection, onSelectionChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [endPoint, setEndPoint] = useState<{ x: number; y: number } | null>(null);
-  const [selection, setSelection] = useState<Selection | null>(null);
 
   const getCoords = (e: React.MouseEvent): { x: number; y: number } => {
     if (!containerRef.current) return { x: 0, y: 0 };
@@ -29,7 +29,6 @@ const InteractiveImage: React.FC<InteractiveImageProps> = ({ src, onSelectionCha
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    setSelection(null);
     onSelectionChange(null);
     setStartPoint(getCoords(e));
     setEndPoint(getCoords(e));
@@ -51,10 +50,8 @@ const InteractiveImage: React.FC<InteractiveImageProps> = ({ src, onSelectionCha
         height: Math.abs(startPoint.y - finalEndPoint.y),
       };
       if (newSelection.width > 5 && newSelection.height > 5) {
-        setSelection(newSelection);
         onSelectionChange(newSelection);
       } else {
-        setSelection(null);
         onSelectionChange(null);
       }
       setStartPoint(null);
