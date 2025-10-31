@@ -13,7 +13,48 @@ const FILTERS = [
     { name: 'Crema', style: 'sepia(.5) contrast(1.1) brightness(1.1)'},
     { name: 'Ludwig', style: 'brightness(1.05) contrast(1.05) saturate(0.1)'},
     { name: 'Aden', style: 'hue-rotate(-20deg) contrast(.9) saturate(.85) brightness(1.2)'},
-    { name: 'Perpetua', style: 'contrast(1.1) brightness(1.2) saturate(1.1)'}
+    { name: 'Perpetua', style: 'contrast(1.1) brightness(1.2) saturate(1.1)'},
+    { name: '1977', style: 'contrast(1.1) brightness(1.1) saturate(1.3)' },
+    { name: 'Amaro', style: 'hue-rotate(-10deg) contrast(0.9) brightness(1.1) saturate(1.5)' },
+    { name: 'Brannan', style: 'sepia(0.5) contrast(1.4)' },
+    { name: 'Earlybird', style: 'contrast(0.9) sepia(0.2)' },
+    { name: 'Hefe', style: 'contrast(1.1) saturate(1.1) brightness(1.05) sepia(0.1)' },
+    { name: 'Hudson', style: 'brightness(1.2) contrast(0.9) saturate(1.1)' },
+    { name: 'Inkwell', style: 'sepia(0.3) contrast(1.1) brightness(1.1) grayscale(1)' },
+    { name: 'Kelvin', style: 'sepia(0.4) contrast(1.5) brightness(1.1)' },
+    { name: 'Lo-Fi', style: 'saturate(1.1) contrast(1.5)' },
+    { name: 'Nashville', style: 'sepia(0.2) contrast(1.5) brightness(0.9) hue-rotate(-15deg)' },
+    { name: 'Rise', style: 'brightness(1.05) sepia(0.25) contrast(0.9) saturate(0.9)' },
+    { name: 'Sierra', style: 'contrast(0.9) saturate(1.1) brightness(1.1) sepia(0.05)' },
+    { name: 'Sutro', style: 'brightness(0.75) contrast(1.1) saturate(1.4) hue-rotate(-10deg) sepia(0.5)' },
+    { name: 'Toaster', style: 'contrast(1.5) brightness(0.9) sepia(0.1)' },
+    { name: 'Valencia', style: 'contrast(1.1) brightness(1.1) sepia(0.08)' },
+    { name: 'Walden', style: 'brightness(1.1) hue-rotate(-10deg) sepia(0.3) saturate(1.6)' },
+    { name: 'Willow', style: 'grayscale(0.5) contrast(0.95) brightness(0.9)' },
+    { name: 'X-Pro II', style: 'sepia(0.3) contrast(1.5) brightness(0.75) saturate(1.2) hue-rotate(-5deg)' },
+    { name: 'Mayfair', style: 'contrast(1.1) saturate(1.1) brightness(1.05)' },
+    { name: 'Stinson', style: 'contrast(0.75) saturate(0.85) brightness(1.15)' },
+    // New Film Filters
+    { name: 'Kodachrome', style: 'sepia(.4) saturate(1.5) contrast(1.1) brightness(0.9)' },
+    { name: 'Technicolor', style: 'contrast(1.5) saturate(1.8) brightness(0.8) hue-rotate(-20deg)' },
+    { name: 'Cinematic', style: 'contrast(1.2) brightness(0.9) sepia(.3) hue-rotate(-20deg)' },
+    { name: 'Vintage', style: 'sepia(.6) contrast(1.2) brightness(.8) saturate(1.2)' },
+    { name: 'Noir', style: 'grayscale(1) contrast(1.5) brightness(0.9)' },
+    { name: 'Fuji Velvia', style: 'saturate(1.4) contrast(1.2) brightness(1.05)' },
+    { name: 'Agfa Vista', style: 'saturate(1.2) contrast(1.1) brightness(1.0) hue-rotate(10deg)' },
+    { name: 'Portra 400', style: 'sepia(0.1) saturate(1.1) contrast(1.05) brightness(1.1)' },
+    { name: 'Lomo', style: 'saturate(1.5) contrast(1.3) brightness(0.9) sepia(0.2)' },
+    { name: 'Golden Hour', style: 'sepia(0.3) saturate(1.2) brightness(1.1) contrast(1.1)' },
+    { name: 'Cyberpunk', style: 'hue-rotate(180deg) saturate(2) contrast(1.2) brightness(0.8)' },
+    { name: 'Dreamy', style: 'brightness(1.2) saturate(1.3) contrast(0.9) sepia(0.1)' },
+    { name: 'Bleach', style: 'contrast(1.3) saturate(0.5) brightness(1.1)' },
+    { name: 'Infrared', style: 'hue-rotate(-180deg) saturate(1.5) contrast(1.1)' },
+    { name: 'Muted', style: 'saturate(0.5) contrast(1.1) brightness(1.1)' },
+    { name: 'Cross Process', style: 'sepia(0.5) saturate(1.5) contrast(1.2) hue-rotate(-15deg)' },
+    { name: 'Emerald', style: 'hue-rotate(-90deg) contrast(1.1) saturate(0.8) sepia(0.2)' },
+    { name: 'Rusty', style: 'sepia(0.7) contrast(1.1) brightness(0.9) saturate(1.1)' },
+    { name: 'Arctic', style: 'brightness(1.1) contrast(1.1) sepia(0.3) hue-rotate(180deg)' },
+    { name: 'Faded', style: 'contrast(0.8) brightness(1.1) saturate(0.7) sepia(0.1)' }
 ];
 
 const FilterEditor: React.FC = () => {
@@ -48,7 +89,9 @@ const FilterEditor: React.FC = () => {
             const dataUrl = canvas.toDataURL(file.type);
             const link = document.createElement('a');
             const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            link.download = `${fileName}-${selectedFilter !== 'none' ? FILTERS.find(f => f.style === selectedFilter)?.name.toLowerCase() : 'filtered'}.png`;
+            const filterName = FILTERS.find(f => f.style === selectedFilter)?.name.toLowerCase().replace(' ', '-') || 'filtered';
+            const extension = file.type === 'image/jpeg' ? 'jpg' : 'png';
+            link.download = `${fileName}-${filterName}.${extension}`;
             link.href = dataUrl;
             document.body.appendChild(link);
             link.click();

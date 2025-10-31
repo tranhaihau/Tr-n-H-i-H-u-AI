@@ -5,6 +5,7 @@ import { TOOLS } from '../constants';
 import FileUpload from './common/FileUpload';
 import Spinner from './common/Spinner';
 import InteractiveImage, { Selection } from './common/InteractiveImage';
+import OutpaintingCanvas, { ExpansionData } from './common/OutpaintingCanvas';
 
 interface ImageEditorProps {
   mode: EditMode;
@@ -52,7 +53,6 @@ const BeautifyControls: React.FC<{ options: any; setOptions: (options: any) => v
     );
 };
 
-
 const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
   const [file, setFile] = useState<File | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -62,18 +62,21 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [beautifyOptions, setBeautifyOptions] = useState({ smoothSkin: 50, enlargeEyes: 10, vLineFace: false, });
-
+  const [expansionData, setExpansionData] = useState<ExpansionData | null>(null);
 
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const toolConfig = TOOLS[mode];
   
   const isGenerativeFillMode = mode === EditMode.GenerativeFill;
+  const isRemoveWatermarkMode = mode === EditMode.RemoveWatermarkImage;
   const isBeautifyMode = mode === EditMode.Beautify;
+  const isExpandMode = mode === EditMode.Expand;
 
   const handleFileChange = (selectedFile: File | null) => {
     setFile(selectedFile);
     setProcessedImageUrl(null); 
     setSelection(null);
+    setExpansionData(null);
     if (selectedFile) {
       setOriginalImageUrl(URL.createObjectURL(selectedFile));
     } else {
@@ -93,9 +96,15 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || isLoading) return;
+
+    // Conditionals for modes that need extra validation
     if (isGenerativeFillMode && !selection) {
       setError("Vui lòng vẽ một hộp xung quanh khu vực cần chỉnh sửa.");
       return;
+    }
+     if (isExpandMode && (!expansionData || (expansionData.newWidth === expansionData.imageWidth && expansionData.newHeight === expansionData.imageHeight))) {
+        setError("Vui lòng kéo các cạnh để mở rộng ảnh.");
+        return;
     }
 
     setIsLoading(true);
@@ -106,6 +115,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
       let imageFileToSend = file;
       let finalPrompt = '';
 
+      // Determine prompt
       if (isGenerativeFillMode) {
           if (!prompt) {
                setError("Vui lòng nhập mô tả cho vùng cần chỉnh sửa.");
@@ -115,38 +125,49 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
           finalPrompt = toolConfig.defaultPrompt!.replace('{user_prompt}', prompt);
       } else if (isBeautifyMode) {
           finalPrompt = constructBeautifyPrompt();
+      } else if (isRemoveWatermarkMode) {
+          finalPrompt = toolConfig.defaultPrompt!;
       } else {
           finalPrompt = `${toolConfig.defaultPrompt || ''}${prompt}`;
       }
-      
-      if (isGenerativeFillMode && selection && originalImageUrl) {
-        const image = new Image();
-        image.src = originalImageUrl;
-        await new Promise(resolve => { image.onload = resolve; });
 
-        const canvas = document.createElement('canvas');
-        canvas.width = image.naturalWidth;
-        canvas.height = image.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx || !imageContainerRef.current) throw new Error("Could not process image");
+      // Handle image preprocessing (canvas manipulation) for specific modes
+      if (isGenerativeFillMode || isExpandMode) {
+          const image = new Image();
+          image.src = originalImageUrl!;
+          await new Promise(resolve => { image.onload = resolve; });
 
-        ctx.drawImage(image, 0, 0);
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error("Could not get canvas context");
 
-        const scaleX = image.naturalWidth / imageContainerRef.current.clientWidth;
-        const scaleY = image.naturalHeight / imageContainerRef.current.clientHeight;
+          if (isGenerativeFillMode && selection && imageContainerRef.current) {
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            ctx.drawImage(image, 0, 0);
 
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-        ctx.fillRect(
-            selection.x * scaleX,
-            selection.y * scaleY,
-            selection.width * scaleX,
-            selection.height * scaleY
-        );
-        
-        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
-        if (!blob) throw new Error("Could not convert canvas to blob.");
-        imageFileToSend = new File([blob], file.name, { type: 'image/jpeg' });
+            const scaleX = image.naturalWidth / imageContainerRef.current.clientWidth;
+            const scaleY = image.naturalHeight / imageContainerRef.current.clientHeight;
+
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+            ctx.fillRect(
+                selection.x * scaleX,
+                selection.y * scaleY,
+                selection.width * scaleX,
+                selection.height * scaleY
+            );
+          } else if (isExpandMode && expansionData) {
+              canvas.width = expansionData.newWidth;
+              canvas.height = expansionData.newHeight;
+              ctx.drawImage(image, expansionData.imageX, expansionData.imageY, expansionData.imageWidth, expansionData.imageHeight);
+          }
+          
+          const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+          if (!blob) throw new Error("Could not convert canvas to blob.");
+          imageFileToSend = new File([blob], file.name, { type: 'image/png' });
       }
+
+      // For RemoveWatermarkImage and others, imageFileToSend is just the original file.
 
       const imageData = await editImage(imageFileToSend, finalPrompt);
       setProcessedImageUrl(`data:image/png;base64,${imageData}`);
@@ -157,7 +178,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
     }
   };
   
-  const needsPromptInput = [EditMode.ChangeBackground, EditMode.Expand, EditMode.Upscale, EditMode.GenerativeFill].includes(mode);
+  const needsPromptInput = [EditMode.ChangeBackground, EditMode.Expand, EditMode.GenerativeFill].includes(mode);
   const isSubmitDisabled = isLoading || !file || (isGenerativeFillMode && (!selection || !prompt));
   
   const renderControls = () => {
@@ -177,6 +198,23 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
     }
     return null;
   };
+
+  const renderOriginalImage = () => {
+    if (!originalImageUrl) {
+      return <div className="text-text-secondary">Tải ảnh lên để bắt đầu</div>;
+    }
+    if (isGenerativeFillMode) {
+      return <InteractiveImage src={originalImageUrl} onSelectionChange={setSelection} />;
+    }
+    if (isExpandMode) {
+      return <OutpaintingCanvas src={originalImageUrl} onExpansionChange={setExpansionData} />;
+    }
+    // For automatic watermark removal, just show the static image.
+    if (isRemoveWatermarkMode) {
+        return <img src={originalImageUrl} alt="Original" className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />;
+    }
+    return <img src={originalImageUrl} alt="Original" className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />;
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -199,20 +237,12 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ mode }) => {
       
       {error && <div className="text-red-400 text-center mb-4 bg-base-100 p-3 rounded-lg">{error}</div>}
 
-      <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`flex-grow ${mode === EditMode.Expand ? 'flex flex-col' : 'grid grid-cols-1 md:grid-cols-2'} gap-4`}>
         <div ref={imageContainerRef} className="bg-base-100 rounded-lg p-4 border border-dashed border-base-300 flex flex-col items-center justify-center min-h-[40vh]">
           <h3 className="text-lg font-semibold text-text-secondary mb-4">Ảnh Gốc</h3>
-          {originalImageUrl ? (
-            isGenerativeFillMode ? (
-              <InteractiveImage src={originalImageUrl} onSelectionChange={setSelection} />
-            ) : (
-              <img src={originalImageUrl} alt="Original" className="max-w-full max-h-[60vh] rounded-lg shadow-lg" />
-            )
-          ) : (
-            <div className="text-text-secondary">Tải ảnh lên để bắt đầu</div>
-          )}
+          {renderOriginalImage()}
         </div>
-        <div className="bg-base-100 rounded-lg p-4 border border-dashed border-base-300 flex flex-col items-center justify-center min-h-[40vh]">
+        <div className={`bg-base-100 rounded-lg p-4 border border-dashed border-base-300 flex flex-col items-center justify-center min-h-[40vh] ${mode === EditMode.RemoveBackground ? 'checkerboard-bg' : ''}`}>
           <h3 className="text-lg font-semibold text-text-secondary mb-4">Kết Quả</h3>
           {isLoading && !error && (
             <div className="text-center">
