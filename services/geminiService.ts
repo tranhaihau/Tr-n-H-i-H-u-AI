@@ -122,6 +122,40 @@ export const faceSwap = async (sourceImage: File, targetImage: File, prompt: str
     }
 };
 
+export const compositeImages = async (image1: File, image2: File, prompt: string): Promise<string> => {
+    const ai = getGenAIClient();
+    try {
+        const image1Part = await fileToGenerativePart(image1);
+        const image2Part = await fileToGenerativePart(image2);
+        const textPart = { text: prompt };
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: [{
+                parts: [image1Part, image2Part, textPart],
+            }],
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+        
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+            if (part.inlineData) {
+                return part.inlineData.data;
+            }
+        }
+        const textResponse = response.text;
+        if (textResponse) {
+             throw new Error(`The model returned a text response instead of an image: "${textResponse}"`);
+        }
+        throw new Error("No image data found in response.");
+
+    } catch (error) {
+        console.error("Error during image compositing:", error);
+        throw new Error("Failed to composite images. Please check the console for details.");
+    }
+};
+
 export const createChatSession = (): Chat => {
     const ai = getGenAIClient();
     return ai.chats.create({

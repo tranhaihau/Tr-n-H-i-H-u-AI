@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { editImage, generateImage, faceSwap } from '../services/geminiService';
+import { editImage, generateImage, faceSwap, compositeImages } from '../services/geminiService';
 import { EditMode } from '../types';
 import { TOOLS, MENU_STRUCTURE } from '../constants';
 import FileUpload from './common/FileUpload';
@@ -39,6 +39,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
     const [beautifyOptions, setBeautifyOptions] = useState({ smoothSkin: 50, enlargeEyes: 10, vLineFace: false });
     const [sourceFile, setSourceFile] = useState<File | null>(null);
     const [targetFile, setTargetFile] = useState<File | null>(null);
+    const [compositeImage1, setCompositeImage1] = useState<File | null>(null);
+    const [compositeImage2, setCompositeImage2] = useState<File | null>(null);
     const [originalSize, setOriginalSize] = useState<{ width: number; height: number } | null>(null);
     const [width, setWidth] = useState<number>(0);
     const [height, setHeight] = useState<number>(0);
@@ -62,6 +64,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
         setExpansionData(null);
         setSourceFile(null);
         setTargetFile(null);
+        setCompositeImage1(null);
+        setCompositeImage2(null);
         setOriginalSize(null);
         setWidth(0);
         setHeight(0);
@@ -122,6 +126,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
             } else if (activeTool === EditMode.FaceSwap) {
                 if (!sourceFile || !targetFile) throw new Error("Vui lòng tải lên cả hai ảnh.");
                 const imageData = await faceSwap(sourceFile, targetFile, toolConfig.defaultPrompt!);
+                setProcessedImageUrl(`data:image/png;base64,${imageData}`);
+            } else if (activeTool === EditMode.CompositeImages) {
+                if (!compositeImage1 || !compositeImage2) throw new Error("Vui lòng tải lên cả hai ảnh.");
+                const imageData = await compositeImages(compositeImage1, compositeImage2, toolConfig.defaultPrompt!);
                 setProcessedImageUrl(`data:image/png;base64,${imageData}`);
             } else {
                 if (!file) throw new Error("Vui lòng tải ảnh lên.");
@@ -307,8 +315,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
     
     const renderDisplayArea = () => {
         const twoPanelModes = [EditMode.Sharpen, EditMode.Beautify, EditMode.RemoveBackground, EditMode.ChangeBackground, EditMode.RemoveWatermarkImage, EditMode.GenerativeFill, EditMode.Expand, EditMode.Resize];
-        const showTwoPanels = twoPanelModes.includes(activeTool);
-        
+        const singlePanelModes = [EditMode.Generate, EditMode.FaceSwap, EditMode.CompositeImages];
+
         const OriginalImageViewer = () => {
             if (!originalImageUrl) return <div className="text-text-secondary">Tải ảnh lên để bắt đầu</div>;
             if (activeTool === EditMode.GenerativeFill) return <InteractiveImage src={originalImageUrl} onSelectionChange={setSelection} />;
@@ -327,14 +335,14 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
              return <div className="text-text-secondary">Kết quả sẽ hiển thị ở đây</div>
         };
 
-        if (showTwoPanels) return (
+        if (twoPanelModes.includes(activeTool)) return (
             <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div ref={imageContainerRef} className="bg-base-100 rounded-lg p-4 border border-dashed border-base-300 flex flex-col items-center justify-center min-h-[40vh]"><h3 className="text-lg font-semibold text-text-secondary mb-4">Ảnh Gốc</h3><OriginalImageViewer /></div>
                 <div className={`bg-base-100 rounded-lg p-4 border border-dashed border-base-300 flex flex-col items-center justify-center min-h-[40vh] ${activeTool === EditMode.RemoveBackground ? 'checkerboard-bg' : ''}`}><h3 className="text-lg font-semibold text-text-secondary mb-4">Kết Quả</h3><ProcessedImageViewer /></div>
             </div>
         );
         
-        if (activeTool === EditMode.Generate || activeTool === EditMode.FaceSwap) return (
+        if (singlePanelModes.includes(activeTool)) return (
              <div className="flex-grow mt-4 flex items-center justify-center bg-base-100 rounded-lg p-4 border border-dashed border-base-300 min-h-[50vh]">
                 {isLoading && !error ? <div className="text-center"><Spinner large /><p className="mt-4 text-text-secondary">AI đang sáng tạo...</p></div> : null}
                 {processedImageUrl ? <ProcessedImageViewer /> : null}
@@ -366,7 +374,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
         return null;
     };
 
-    const isSingleFileUpload = [EditMode.Generate, EditMode.Sharpen, EditMode.Beautify, EditMode.Expand, EditMode.RemoveBackground, EditMode.ChangeBackground, EditMode.RemoveWatermarkImage, EditMode.GenerativeFill, EditMode.Resize, EditMode.ConvertFormat, EditMode.Filter].includes(activeTool);
+    const isSingleFileUpload = ![EditMode.FaceSwap, EditMode.CompositeImages, EditMode.BatchWatermark].includes(activeTool);
 
     return (
         <div className="flex flex-col h-full">
@@ -387,6 +395,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ initialMode }) => {
                     {activeTool === EditMode.FaceSwap && <>
                         <div className="flex-1 flex flex-col gap-2"><h3 className="text-base font-semibold text-text-secondary text-center">Ảnh Gốc (Mặt)</h3><FileUpload onFileChange={setSourceFile} /></div>
                         <div className="flex-1 flex flex-col gap-2"><h3 className="text-base font-semibold text-text-secondary text-center">Ảnh Đích</h3><FileUpload onFileChange={setTargetFile} /></div>
+                    </>}
+                    {activeTool === EditMode.CompositeImages && <>
+                        <div className="flex-1 flex flex-col gap-2"><h3 className="text-base font-semibold text-text-secondary text-center">Ảnh 1 (Chủ thể)</h3><FileUpload onFileChange={setCompositeImage1} /></div>
+                        <div className="flex-1 flex flex-col gap-2"><h3 className="text-base font-semibold text-text-secondary text-center">Ảnh 2 (Nền)</h3><FileUpload onFileChange={setCompositeImage2} /></div>
                     </>}
                     {activeTool !== EditMode.BatchWatermark && renderControls()}
                 </div>

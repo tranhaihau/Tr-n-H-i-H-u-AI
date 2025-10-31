@@ -19,6 +19,14 @@ const ReplaceIcon = () => (
 const FaceSwapIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 10h3M7 10h3"/><path d="M10 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M18.6 15.5c-1.3-1.2-2.3-2.6-3.1-4.1"/><path d="M5.4 15.5c1.3-1.2 2.3-2.6 3.1-4.1"/><path d="M12 2a10 10 0 0 0-10 10c0 4.4 2.9 8.1 6.8 9.5"/><path d="M12 22a10 10 0 0 0 10-10c0-4.4-2.9-8.1-6.8-9.5"/></svg>
 );
+const CompositeIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M8 21h11a2 2 0 0 0 2-2V8"></path>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <path d="M21 15l-5-5L8 21"></path>
+    </svg>
+);
 const SharpenIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>;
 const BeautifyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L9 9l-7 2.5 7 2.5 3 7 3-7 7-2.5-7-2.5L12 2z"/><path d="M19 12l-2 2 2 2-2 2"/></svg>;
 const FilterIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg>;
@@ -111,6 +119,7 @@ export const MENU_STRUCTURE: Record<string, { name: string; tools: EditMode[] }>
         tools: [
             EditMode.Generate,
             EditMode.GenerativeFill,
+            EditMode.CompositeImages,
             EditMode.Sharpen,
             EditMode.Beautify,
             EditMode.Expand,
@@ -207,6 +216,12 @@ export const TOOLS: Record<EditMode, ToolDetails> = {
       icon: <FaceSwapIcon />,
       description: "Tải lên ảnh nguồn (chứa gương mặt) và ảnh đích, AI sẽ thực hiện gán ghép.",
       defaultPrompt: "Take the face from the first image (source face) and seamlessly swap it onto the most prominent person in the second image (target image). Preserve the lighting, skin tone, and style of the target image for a realistic result.",
+    },
+    [EditMode.CompositeImages]: {
+      name: "Ghép Ảnh",
+      icon: <CompositeIcon />,
+      description: "Tự động ghép chủ thể từ ảnh 1 vào ảnh 2 một cách tự nhiên.",
+      defaultPrompt: "Take the primary subject from the first image and realistically composite it into the second image. Pay close attention to lighting, shadows, scale, and perspective to ensure the final image looks natural and coherent.",
     },
     [EditMode.Filter]: {
         name: "Bộ Lọc Màu",

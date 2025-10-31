@@ -18,6 +18,7 @@ export enum EditMode {
   GenerateVideo = 'GENERATE_VIDEO',
   GenerateVideoFromScript = 'GENERATE_VIDEO_FROM_SCRIPT',
   RemoveWatermarkVideo = 'REMOVE_WATERMARK_VIDEO',
+  CompositeImages = 'COMPOSITE_IMAGES',
 
   // New Links
   PhotoshopOnline = 'PHOTOSHOP_ONLINE',
