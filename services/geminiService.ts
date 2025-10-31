@@ -55,38 +55,21 @@ export const generateImage = async (prompt: string, imageFile: File | null = nul
     }
 };
 
-export const editImage = async (imageFile: File, prompt: string): Promise<string> => {
-    const ai = getGenAIClient();
-    try {
-        const imagePart = await fileToGenerativePart(imageFile);
-        const textPart = { text: prompt };
+export async function editImage(prompt: string, imageData: string) {
+  const res = await fetch("/api/gemini", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, image: imageData }),
+  });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: [{
-                parts: [imagePart, textPart],
-            }],
-            config: {
-                responseModalities: [Modality.IMAGE],
-            },
-        });
-        
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) {
-                return part.inlineData.data;
-            }
-        }
-        const textResponse = response.text;
-        if (textResponse) {
-             throw new Error(`The model returned a text response instead of an image: "${textResponse}"`);
-        }
-        throw new Error("No image data found in response.");
+  if (!res.ok) {
+    throw new Error("Failed to edit image");
+  }
 
-    } catch (error) {
-        console.error("Error editing image:", error);
-        throw new Error("Failed to edit image. Please check the console for details.");
-    }
-};
+  const data = await res.json();
+  return data.text;
+}
+
 
 export const faceSwap = async (sourceImage: File, targetImage: File, prompt: string): Promise<string> => {
     const ai = getGenAIClient();
